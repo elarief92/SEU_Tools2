@@ -1,0 +1,682 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - SEU Tools{% endblock %}
+
+{% block page_icon %}fas fa-tachometer-alt{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block page_description %}Welcome back, {{ current_user.username }}! Here's what's happening with your certificates.{% endblock %}
+{% block page_actions %}
+{% endblock %}
+
+{% block content %}
+
+<!-- JSON data for charts -->
+{{ processing_charts|json_script:"processing-charts-data" }}
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4" id="dashboardStats">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stat-card h-100">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-8">
+                            <div class="stat-number" id="totalRequests">{{ stats.total_requests }}</div>
+                            <div class="stat-label">Total Requests</div>
+                        </div>
+                        <div class="col-4 text-end">
+                            <i class="fas fa-exchange-alt stat-icon text-success"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stat-card success h-100">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-8">
+                            <div class="stat-number text-success" id="successfulRequests">{{ stats.successful_requests }}</div>
+                            <div class="stat-label">Successful</div>
+                        </div>
+                        <div class="col-4 text-end">
+                            <i class="fas fa-check-circle stat-icon text-success"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stat-card danger h-100">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-8">
+                            <div class="stat-number text-danger" id="failedRequests">{{ stats.failed_requests }}</div>
+                            <div class="stat-label">Failed</div>
+                        </div>
+                        <div class="col-4 text-end">
+                            <i class="fas fa-exclamation-triangle stat-icon text-danger"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stat-card info h-100">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-8">
+                            <div class="stat-number text-info" id="totalTokens">{{ stats.total_tokens }}</div>
+                            <div class="stat-label">Active Tokens</div>
+                        </div>
+                        <div class="col-4 text-end">
+                            <i class="fas fa-key stat-icon text-info"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="row mb-4">
+        <div class="col-xl-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <i class="fas fa-chart-pie me-2"></i>
+                    Processing Statistics
+                </div>
+                <div class="card-body">
+                    <div id="processingStatsChart" ></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <i class="fas fa-chart-line me-2"></i>
+                    Activity Over Time
+                </div>
+                <div class="card-body">
+                    <div id="userActivityChart" ></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <i class="fas fa-heartbeat me-2"></i>
+                    API Health
+                </div>
+                <div class="card-body">
+                    <div id="apiHealthChart"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activity & Quick Actions -->
+    <div class="row">
+        <div class="col-xl-8 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-history me-2"></i>
+                    Recent Activity
+                </div>
+                <div class="card-body">
+                    {% if recent_history %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Time</th>
+                                        <th>Requester</th>
+                                        <th>Status</th>
+                                        <th>Processing Time</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in recent_history %}
+                                    <tr>
+                                        <td>
+                                            <small class="text-muted">
+                                                {{ item.created_at|date:"Y-m-d H:i" }}
+                                            </small>
+                                        </td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <i class="fas fa-user text-primary me-2"></i>
+                                                <div>
+                                                    <div class="fw-medium">{{ item.requester }}</div>
+                                                    <small class="text-muted">{{ item.endpoint }}</small>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            {% if item.status == 'success' %}
+                                                <span class="badge bg-success">
+                                                    <i class="fas fa-check me-1"></i>Success
+                                                </span>
+                                            {% else %}
+                                                <span class="badge bg-danger">
+                                                    <i class="fas fa-times me-1"></i>Failed
+                                                </span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if item.processing_time %}
+                                                <span class="fw-medium">{{ item.processing_time }}s</span>
+                                            {% else %}
+                                                <small class="text-muted">N/A</small>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="text-center mt-3">
+                            <a href="/history" class="btn btn-outline-primary">
+                                <i class="fas fa-history me-2"></i>View Full History
+                            </a>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">No recent activity</h5>
+                            <p class="text-muted">Process your first certificate to see activity here.</p>
+                            <a href="/process" class="btn btn-primary">
+                                <i class="fas fa-plus me-2"></i>Process Certificate
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-4 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-rocket me-2"></i>
+                    Quick Actions
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="/process" class="btn btn-primary">
+                            <i class="fas fa-file-pdf me-2"></i>
+                            Process Certificate
+                        </a>
+                        <a href="/tokens" class="btn btn-outline-primary">
+                            <i class="fas fa-key me-2"></i>
+                            Manage API Tokens
+                        </a>
+                        <a href="/history" class="btn btn-outline-primary">
+                            <i class="fas fa-history me-2"></i>
+                            View History
+                        </a>
+                        {% if current_user.is_admin %}
+                        <a href="/admin" class="btn btn-outline-danger">
+                            <i class="fas fa-users-cog me-2"></i>
+                            Admin Panel
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- System Status -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <i class="fas fa-heartbeat me-2"></i>
+                    System Status
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="small">API Status</span>
+                        <span class="badge bg-success">Online</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="small">Database</span>
+                        <span class="badge bg-success">Connected</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="small">OpenAI Service</span>
+                        <span class="badge bg-success">Available</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="small">PDF Processing</span>
+                        <span class="badge bg-success">Ready</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Auto-refresh notification -->
+<div class="toast-position">
+    <div class="toast" id="refreshToast" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header">
+            <i class="fas fa-sync-alt text-primary me-2"></i>
+            <strong class="me-auto">Dashboard Updated</strong>
+            <small>Just now</small>
+            <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+        </div>
+        <div class="toast-body">
+            Statistics have been refreshed with the latest data.
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Initialize ECharts
+let processingStatsChart = null;
+let activityChart = null;
+let apiHealthChart = null;
+
+// Initialize charts when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    initializeCharts();
+    loadChartData();
+});
+
+function initializeCharts() {
+    // Processing Statistics Pie Chart
+    const processingStatsElement = document.getElementById('processingStatsChart');
+    processingStatsChart = echarts.init(processingStatsElement);
+    
+    // Activity Over Time Line Chart
+    const activityElement = document.getElementById('userActivityChart');
+    activityChart = echarts.init(activityElement);
+    
+    // API Health Gauge Chart
+    const apiHealthElement = document.getElementById('apiHealthChart');
+    apiHealthChart = echarts.init(apiHealthElement);
+    
+    // Make charts responsive
+    window.addEventListener('resize', function() {
+        if (processingStatsChart) processingStatsChart.resize();
+        if (activityChart) activityChart.resize();
+        if (apiHealthChart) apiHealthChart.resize();
+    });
+}
+
+function loadChartData() {
+    // Use data from template context instead of API call
+    const chartData = JSON.parse(document.getElementById('processing-charts-data').textContent);
+    
+    // Load charts immediately with context data
+    updateProcessingStatsChart(chartData);
+    updateActivityChart(chartData);
+    updateApiHealthChart(chartData);
+}
+
+function showErrorState() {
+    const errorOption = {
+        graphic: {
+            type: 'text',
+            left: 'center',
+            top: 'center',
+            style: {
+                text: 'Error loading chart data\nPlease refresh the page',
+                textAlign: 'center',
+                fill: '#dc3545',
+                fontSize: 14
+            }
+        }
+    };
+    
+    if (processingStatsChart) processingStatsChart.setOption(errorOption);
+    if (activityChart) activityChart.setOption(errorOption);
+    if (apiHealthChart) apiHealthChart.setOption(errorOption);
+}
+
+function updateProcessingStatsChart(data) {
+    const stats = data.processing_stats;
+    const methods = data.processing_methods;
+    
+    // Check if there's any data
+    if (stats.total === 0) {
+        const emptyOption = {
+            title: {
+                text: 'Processing Results',
+                left: 'center',
+                textStyle: {
+                    fontSize: 16,
+                    fontWeight: 'normal'
+                },
+                show: false,
+            },
+            graphic: {
+                type: 'text',
+                left: 'center',
+                top: 'center',
+                style: {
+                    text: 'No processing data available\nProcess your first certificate to see statistics',
+                    textAlign: 'center',
+                    fill: '#999',
+                    fontSize: 14
+                }
+            }
+        };
+        processingStatsChart.setOption(emptyOption);
+        return;
+    }
+    
+    // Processing Status Chart (Pie)
+    const statusOption = {
+        title: {
+            text: 'Processing Results',
+            left: 'center',
+            textStyle: {
+                fontSize: 16,
+                fontWeight: 'normal'
+            },
+            show: false,
+        },
+        tooltip: {
+            trigger: 'item',
+            formatter: '{a} <br/>{b}: {c} ({d}%)'
+        },
+        legend: {
+            orient: 'horizontal',
+            bottom: '10px',
+            left: 'center'
+        },
+        series: [{
+            name: 'Processing Results',
+            type: 'pie',
+            radius: ['40%', '70%'],
+            center: ['50%', '45%'],
+            avoidLabelOverlap: false,
+            itemStyle: {
+                borderRadius: 5,
+                borderColor: '#fff',
+                borderWidth: 2
+            },
+            label: {
+                show: false,
+                position: 'center'
+            },
+            emphasis: {
+                label: {
+                    show: true,
+                    fontSize: '18',
+                    fontWeight: 'bold'
+                }
+            },
+            labelLine: {
+                show: false
+            },
+            data: [
+                {
+                    value: stats.success,
+                    name: 'Successful',
+                    itemStyle: { color: '#28a745' }
+                },
+                {
+                    value: stats.error,
+                    name: 'Failed',
+                    itemStyle: { color: '#dc3545' }
+                }
+            ].filter(item => item.value > 0)
+        }]
+    };
+    
+    processingStatsChart.setOption(statusOption);
+}
+
+function updateActivityChart(data) {
+    const activity = data.activity_over_time;
+    
+    // Check if there's any activity data
+    if (activity.dates.length === 0) {
+        const emptyOption = {
+            title: {
+                text: 'Activity Over Time (Last 30 Days)',
+                left: 'center',
+                textStyle: {
+                    fontSize: 16,
+                    fontWeight: 'normal'
+                }
+            },
+            graphic: {
+                type: 'text',
+                left: 'center',
+                top: 'center',
+                style: {
+                    text: 'No recent activity\nProcess certificates to see activity trends',
+                    textAlign: 'center',
+                    fill: '#999',
+                    fontSize: 14
+                }
+            }
+        };
+        activityChart.setOption(emptyOption);
+        return;
+    }
+    
+    const activityOption = {
+        title: {
+            text: 'Activity Over Time (Last 30 Days)',
+            left: 'center',
+            textStyle: {
+                fontSize: 16,
+                fontWeight: 'normal'
+            }
+        },
+        tooltip: {
+            trigger: 'axis',
+            axisPointer: {
+                type: 'cross',
+                label: {
+                    backgroundColor: '#6a7985'
+                }
+            }
+        },
+        legend: {
+            data: ['Successful', 'Failed'],
+            bottom: '10px',
+            left: 'center'
+        },
+        grid: {
+            left: '3%',
+            right: '4%',
+            bottom: '15%',
+            top: '15%',
+            containLabel: true
+        },
+        xAxis: {
+            type: 'category',
+            boundaryGap: false,
+            data: activity.dates,
+            axisLabel: {
+                rotate: 45,
+                fontSize: 10
+            }
+        },
+        yAxis: {
+            type: 'value',
+            minInterval: 1
+        },
+        series: [
+            {
+                name: 'Successful',
+                type: 'line',
+                areaStyle: { 
+                    color: 'rgba(40, 167, 69, 0.6)'
+                },
+                emphasis: {
+                    focus: 'series'
+                },
+                data: activity.success,
+                itemStyle: { color: '#28a745' }
+            },
+            {
+                name: 'Failed',
+                type: 'line',
+                areaStyle: { 
+                    color: 'rgba(220, 53, 69, 0.6)'
+                },
+                emphasis: {
+                    focus: 'series'
+                },
+                data: activity.error,
+                itemStyle: { color: '#dc3545' }
+            }
+        ]
+    };
+    
+    activityChart.setOption(activityOption);
+}
+
+function updateApiHealthChart(data) {
+    
+    const stats = data.processing_stats;
+    const apiHealth = data.api_health;
+    
+    // Get success percentage from API health data
+    const successPercentage = apiHealth.success_percentage || 0;
+    
+    // Determine color based on percentage
+    let gaugeColor = '#dc3545'; // Red for poor health
+    if (successPercentage >= 70) {
+        gaugeColor = '#28a745'; // Green for excellent health
+    } else if (successPercentage >= 50) {
+        gaugeColor = '#ffc107'; // Yellow for good health
+    } else if (successPercentage >= 20) {
+        gaugeColor = '#fd7e14'; // Orange for fair health
+    }
+    
+    // Check if there's any data
+    if (stats.total === 0) {
+        const emptyOption = {
+            title: {
+                text: 'API Health',
+                left: 'center',
+                top: '10%',
+                textStyle: {
+                    fontSize: 16,
+                    fontWeight: 'normal'
+                }
+            },
+            graphic: {
+                type: 'text',
+                left: 'center',
+                top: 'center',
+                style: {
+                    text: 'No data available\nProcess requests to see API health',
+                    textAlign: 'center',
+                    fill: '#999',
+                    fontSize: 12
+                }
+            }
+        };
+        apiHealthChart.setOption(emptyOption);
+        return;
+    }
+    
+    const gaugeOption = {
+        
+        
+        series: [{
+            type: 'gauge',
+            center: ['50%', '60%'],
+            radius: '90%',
+            min: 0,
+            max: 100,
+            splitNumber: 10,
+            progress: {
+                show: false,
+                width: 15,
+                itemStyle: {
+                    color: gaugeColor
+                }
+            },
+            axisLine: {
+                lineStyle: {
+                    width: 15,
+                    color: [
+                        [0.2, '#dc3545'],
+                        [0.5, '#fd7e14'],
+                        [0.7, '#ffc107'],
+                        [1, '#28a745']
+                    ]
+                }
+            },
+            axisTick: {
+                distance: -45,
+                length: 8,
+                show: false,
+                lineStyle: {
+                    color: '#999',
+                    width: 2
+                }
+            },
+            splitLine: {
+                distance: -52,
+                length: 14,
+                show: false,
+                lineStyle: {
+                    color: '#999',
+                    width: 3
+                }
+            },
+            axisLabel: {
+                distance: -20,
+                color: '#999',
+                fontSize: 10,
+                show: false,
+            },
+            anchor: {
+                show: true,
+                showAbove: true,
+                size: 18,
+                itemStyle: {
+                    borderWidth: 2,
+                    borderColor: gaugeColor,
+                    color: '#fff'
+                }
+            },
+            pointer: {
+                itemStyle: {
+                    color: gaugeColor
+                }
+            },
+            detail: {
+                valueAnimation: true,
+                formatter: '{value}%',
+                color: gaugeColor,
+                fontSize: 20,
+                fontWeight: 'bold',
+                offsetCenter: [0, '70%']
+            },
+            data: [{
+                value: successPercentage,
+                name: 'Success Rate'
+            }]
+        }]
+    };
+    
+    try {
+        apiHealthChart.setOption(gaugeOption);
+    } catch (error) {
+        console.error('Error setting gauge chart option:', error);
+    }
+}
+
+// Remove the 30-second refresh interval since data is now static from template context
+// Note: If real-time updates are needed, the user should refresh the page
+
+// Add animation to stats cards
+document.querySelectorAll('.stat-card').forEach((card, index) => {
+    card.style.animationDelay = `${index * 0.1}s`;
+    card.classList.add('fade-in');
+});
+</script>
+{% endblock %} 

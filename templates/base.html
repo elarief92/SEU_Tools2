@@ -1,0 +1,281 @@
+{% load static %}
+
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}SEU Tools{% endblock %}</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="{% static 'css/bootstrap/bootstrap.min.css' %}" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="{% static 'css/fontawesome/fontawesome.min.css' %}" rel="stylesheet">
+    <!-- DataTables CSS -->
+    <link href="{% static 'css/datatables/dataTables.bootstrap5.min.css' %}" rel="stylesheet">
+    <link href="{% static 'css/datatables/buttons.bootstrap5.min.css' %}" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link href="{% static 'css/style.css' %}" rel="stylesheet">
+
+    {% block extra_css %}{% endblock %}
+</head>
+
+<body class="bg-light d-flex flex-column min-vh-100">
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm border-bottom">
+        <div class="container-fluid">
+            <a class="navbar-brand fw-bold" href="/">
+                <img src="{% static 'images/logo.png' %}" alt="SEU Logo" height="34"  class="me-2">
+                SEU Tools
+            </a>
+
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
+                    data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    {% if current_user %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">
+                            <i class="fas fa-tachometer-alt me-1"></i>
+                            Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item dropdown ">
+                        <a class="nav-link dropdown-toggle" href="#" role="button"
+                           data-bs-toggle="dropdown">
+                            <i class="fas fa-cogs me-1"></i>
+                            Services
+                        </a>
+                        <ul class="dropdown-menu p-2" id="servicesDropdown">
+                            <!-- Search Input -->
+                            <li class="p-2 border-bottom">
+                                <div class="input-group">
+                                    <span class="input-group-text">
+                                        <i class="fas fa-search"></i>
+                                    </span>
+                                    <input type="text" class="form-control" placeholder="Search services..." 
+                                           id="servicesSearch" onkeyup="filterServices()">
+                                </div>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="/process">
+                                    <i class="fas fa-file-pdf me-2"></i>
+                                    Process GOSI Certificate
+                                </a>
+                            </li>
+                            <li>
+                                <hr class="dropdown-divider">
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="/api-requests">
+                                    <i class="fas fa-code me-2"></i>
+                                    Request API Endpoint
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/docs">
+                            <i class="fas fa-code me-1"></i>
+                            APIs
+                        </a>
+                        
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/tokens">
+                            <i class="fas fa-key me-1"></i>API Tokens
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/history">
+                            <i class="fas fa-history me-1"></i>History
+                        </a>
+                    </li>
+                    {% if current_user.is_admin %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="/admin">
+                            <i class="fas fa-users-cog me-1"></i>Admin
+                        </a>
+                    </li>
+                    {% endif %}
+                    {% endif %}
+                </ul>
+
+                <ul class="navbar-nav">
+                    
+
+                    {% if current_user %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button"
+                           data-bs-toggle="dropdown">
+                            <i class="fas fa-user-circle me-1"></i>
+                            {{ current_user.username }}
+                            
+                        </a>
+                        <ul class="dropdown-menu profile-dropdown" style="min-width: 150px !important;">
+                          
+                            </li>
+                            <li><a class="dropdown-item profile-dropdown-item" href="/logout" 
+                                style="justify-content: left !important;">
+                                    <i class="fas fa-sign-out-alt me-2"></i>Logout
+                                </a></li>
+                        </ul>
+                    </li>
+                    {% else %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="/login">
+                            <i class="fas fa-sign-in-alt me-1"></i>Login
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Flash Messages -->
+    {% if error %}
+    <div class="container mt-3">
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            {{ error }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    </div>
+    {% endif %}
+    {% if success %}
+    <div class="container mt-3">
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            {{ success }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    </div>
+    {% endif %}
+    {% if info %}
+    <div class="container mt-3">
+        <div class="alert alert-info alert-dismissible fade show" role="alert">
+            {{ info }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Main Content - Flex grow to push footer down -->
+    <main class="container-fluid py-4 flex-grow-1">
+        {% if not hide_header %}
+        <!-- Page Header -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h1 class="h3 mb-1">
+                            <i
+                               class="{% block page_icon %}fas fa-home{% endblock %} me-2 text-primary"></i>
+                            {% block page_title %}SEU Tools{% endblock %}
+                        </h1>
+                        <p class="text-muted mb-0">
+                            {% block page_description %}
+                            Welcome to SEU Tools
+                            {% endblock %}
+                        </p>
+                    </div>
+                    <div>
+                        {% block page_actions %}{% endblock %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Page Content -->
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer - Sticky to bottom -->
+    <footer class="bg-white text-dark py-3 shadow-sm border-top mt-auto">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5><img src="{% static 'images/logo.png' %}" alt="SEU Logo" height="20" class="me-2">SEU Tools</h5>
+                    
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <p class="mb-0">
+                        <small>
+                            Version 1.0.0 |
+                            <a href="/docs" class="text-dark">API Documentation</a> |
+                            <a href="/redoc" class="text-dark">ReDoc</a>
+                        </small>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="{% static 'js/bootstrap/bootstrap.bundle.min.js' %}"></script>
+    <!-- jQuery (for DataTables) -->
+    <script src="{% static 'js/datatables/jquery.min.js' %}"></script>
+    <!-- DataTables JS -->
+    <script src="{% static 'js/datatables/jquery.dataTables.min.js' %}"></script>
+    <script src="{% static 'js/datatables/dataTables.bootstrap5.min.js' %}"></script>
+    <script src="{% static 'js/datatables/dataTables.buttons.min.js' %}"></script>
+    <script src="{% static 'js/datatables/buttons.bootstrap5.min.js' %}"></script>
+    <script src="{% static 'js/datatables/buttons.html5.min.js' %}"></script>
+    <script src="{% static 'js/datatables/buttons.print.min.js' %}"></script>
+    <script src="{% static 'js/datatables/jszip.min.js' %}"></script>
+    <script src="{% static 'js/datatables/pdfmake.min.js' %}"></script>
+    <script src="{% static 'js/datatables/vfs_fonts.js' %}"></script>
+    <!-- ECharts for analytics -->
+    <script src="{% static 'js/echarts/echarts.min.js' %}"></script>
+    <!-- Custom JS -->
+    <script src="{% static 'js/app.js' %}"></script>
+    
+    <!-- Services Dropdown Filter Function -->
+    <script>
+        function filterServices() {
+            const searchInput = document.getElementById('servicesSearch');
+            const dropdown = document.getElementById('servicesDropdown');
+            const items = dropdown.querySelectorAll('.dropdown-item');
+            const dividers = dropdown.querySelectorAll('.dropdown-divider');
+            
+            if (!searchInput) return;
+            
+            const searchTerm = searchInput.value.toLowerCase();
+            
+            items.forEach(item => {
+                const text = item.textContent.toLowerCase();
+                const listItem = item.closest('li');
+                
+                if (text.includes(searchTerm)) {
+                    listItem.style.display = 'block';
+                } else {
+                    listItem.style.display = 'none';
+                }
+            });
+            
+            // Show/hide dividers based on visible items
+            dividers.forEach(divider => {
+                const listItem = divider.closest('li');
+                const nextItem = listItem.nextElementSibling;
+                const prevItem = listItem.previousElementSibling;
+                
+                // Hide divider if next or previous item is hidden
+                if (nextItem && nextItem.style.display === 'none' || 
+                    prevItem && prevItem.style.display === 'none') {
+                    listItem.style.display = 'none';
+                } else {
+                    listItem.style.display = 'block';
+                }
+            });
+        }
+    </script>
+
+    {% block extra_js %}{% endblock %}
+</body>
+
+</html>

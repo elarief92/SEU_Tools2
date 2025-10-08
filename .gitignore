@@ -24,7 +24,7 @@ wheels/
 venv/
 ENV/
 env/
-.env
+
 
 # IDE
 .idea/
@@ -44,3 +44,5 @@ Thumbs.db
 # Project specific
 *.pdf
 !test_files/*.pdf  # Keep test PDFs in version control
+git_commands.txt
+seu_tools_deployment.tar.gz

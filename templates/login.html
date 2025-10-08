@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Login" %} - {% trans "SEU Tools" %}{% endblock %}
+
+{% block page_title %}{% trans "Login" %}{% endblock %}
+{% block page_description %}{% trans "Sign in to your account" %}{% endblock %}
+{% block hide_header %}true{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-4">
+        <div class="login-card">
+            <div class="login-header">
+                <i class="fas fa-lock"></i>
+                <h3>{% trans "Sign In" %}</h3>
+                <p>{% trans "Enter your credentials to access SEU Tools" %}</p>
+            </div>
+            
+            <form method="post" class="mt-4">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label for="username" class="form-label">{% trans "Username" %}</label>
+                    <input type="text" class="form-control" id="username" name="username" required>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="password" class="form-label">{% trans "Password" %}</label>
+                    <input type="password" class="form-control" id="password" name="password" required>
+                </div>
+                
+                <div class="mb-3 form-check">
+                    <input type="checkbox" class="form-check-input" id="remember">
+                    <label class="form-check-label" for="remember">
+                        {% trans "Remember me" %}
+                    </label>
+                </div>
+                
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="fas fa-sign-in-alt me-2"></i>{% trans "Sign In" %}
+                </button>
+            </form>
+            
+            <div class="text-center mt-3">
+                <small class="text-muted">
+                    {% trans "Don't have an account?" %} <a href="/register">{% trans "Contact Admin" %}</a>
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Auto-focus on username field
+document.getElementById('username').focus();
+
+// Handle Enter key in forms - allow normal form submission
+document.getElementById('loginForm').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        // Don't prevent default - let form submit normally
+        if (e.target.type !== 'submit') {
+            document.getElementById('loginBtn').click();
+        }
+    }
+});
+</script>
+{% endblock %} 

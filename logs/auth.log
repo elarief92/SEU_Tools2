@@ -1,0 +1,2 @@
+[2025-07-12 00:00:12,334] INFO authentication: Authentication attempt for username: None from IP: 127.0.0.1 (in /Users/zshaikh/Documents/projects/SEU_dev/SEU_Tools/authentication/views.py:124)
+[2025-07-12 00:00:12,334] WARNING authentication: Authentication failed - missing credentials from IP: 127.0.0.1 (in /Users/zshaikh/Documents/projects/SEU_dev/SEU_Tools/authentication/views.py:127)

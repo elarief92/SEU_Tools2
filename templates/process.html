@@ -1,0 +1,355 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Process Certificate - SEU Tools{% endblock %}
+
+{% block page_icon %}fas fa-file-pdf{% endblock %}
+{% block page_title %}Process GOSI Certificate{% endblock %}
+{% block page_description %}Upload your certificate PDF to extract subscription months
+using AI analysis.{% endblock %}
+{% block page_actions %}
+
+{% endblock %}
+
+{% block content %}
+
+<!-- Processing Form -->
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card shadow-lg">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-upload me-2"></i>
+                    Upload Certificate
+                </h5>
+            </div>
+            <div class="card-body">
+                <form id="processForm" method="POST"
+                      action="{% url 'web:process_upload' %}"
+                      enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <!-- File Upload Area -->
+                    <div class="file-upload-area" id="fileUploadArea">
+                        <!-- Hidden file input positioned over the upload area -->
+                        <input type="file" id="fileInput" name="file"
+                               accept=".pdf,.jpeg,.jpg,.png"
+                               style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; z-index: 2;"
+                               required>
+
+                        <div class="text-center">
+                            <div class="mb-3">
+                                <i
+                                   class="fas fa-cloud-upload-alt fa-3x text-primary mb-3"></i>
+                                <h5>Upload Certificate</h5>
+                                <p class="text-muted">
+                                    Drag and drop your certificate file here, or click
+                                    to browse
+                                    <br>
+                                    <small>Supported formats: PDF, PNG, JPG, JPEG (Max
+                                        10MB)</small>
+                                </p>
+                            </div>
+                            <button type="button" class="btn btn-primary btn-lg"
+                                    style="pointer-events: none;">
+                                <i class="fas fa-folder-open me-2"></i>Choose File
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- File Info -->
+                    <div class="mt-4 file-info-hidden" id="fileInfo">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <div class="row align-items-center">
+                                    <div class="col-auto">
+                                        <i class="fas fa-file-pdf fa-2x text-danger"
+                                           id="fileIcon"></i>
+                                    </div>
+                                    <div class="col">
+                                        <h6 class="mb-1" id="fileName">-</h6>
+                                        <small class="text-muted">
+                                            Size: <span id="fileSize">-</span>
+                                        </small>
+                                    </div>
+                                    <div class="col-auto">
+                                        <button type="button"
+                                                class="btn btn-sm btn-outline-danger"
+                                                data-action="clear-file">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Processing Options -->
+                    <div class="mt-4" id="processingOptions">
+                        <h6 class="mb-3">Processing Options</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio"
+                                           name="processing_type" id="standard"
+                                           value="standard" checked>
+                                    <label class="form-check-label" for="standard">
+                                        <strong>Standard Processing</strong>
+                                        <br>
+                                        <small class="text-muted">Fast text extraction
+                                            and parsing</small>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio"
+                                           name="processing_type" id="ai" value="ai">
+                                    <label class="form-check-label" for="ai">
+                                        <strong>AI Processing</strong>
+                                        <br>
+                                        <small class="text-muted">Advanced AI analysis
+                                            for complex certificates</small>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Processing Helper Text -->
+                        <div class="mt-2 d-none" id="processingHelperText">
+                            <small class="text-info">
+                                <i class="fas fa-info-circle me-1"></i>
+                                <span></span>
+                            </small>
+                        </div>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <div class="mt-4 d-grid">
+                        <button type="submit" class="btn btn-primary btn-lg"
+                                id="processBtn" disabled>
+                            <i class="fas fa-play me-2"></i>Process Certificate
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Processing Status -->
+<div class="row justify-content-center mt-4">
+    <div class="col-lg-8">
+        <div id="processingStatus">
+            {% if processing_result %}
+            <div class="card border-success">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-check-circle me-2"></i>
+                        Processing Complete
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-success">
+                                <i class="fas fa-file-alt me-2"></i>
+                                File: {{ processing_filename }}
+                            </h6>
+                            <p class="mb-2">
+                                <strong>Processing Time:</strong> {{ processing_time }}s
+                            </p>
+                            <p class="mb-2">
+                                <strong>Status:</strong>
+                                <span
+                                      class="badge bg-success">{{processing_result.status|title}}
+                                </span>
+                            </p>
+                        </div>
+                        <div class="col-md-6 text-md-end">
+                            <div class="display-4 text-success mb-2">
+                                {{ processing_result.subscription_months|default:"NA" }}
+                            </div>
+                            <h6 class="text-muted">Subscription Months</h6>
+                        </div>
+                    </div>
+
+                    {% if processing_result.subscription_years %}
+                    <div class="mt-3 pt-3 border-top">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6 class="text-info">
+                                    <i class="fas fa-calendar-alt me-2"></i>
+                                    Additional Details
+                                </h6>
+                                <p class="mb-2">
+                                    <strong>Subscription Years:</strong>
+                                    {{processing_result.subscription_years|default:"NA"}}
+                                </p>
+                            </div>
+                            <div class="col-md-6">
+                                <h6 class="text-info">
+                                    <i class="fas fa-robot me-2"></i>
+                                    Processing Method
+                                </h6>
+                                <p class="mb-2">
+                                    {% if processing_result.processing_method %}
+                                    <span class="badge bg-info">
+                                        {{processing_result.processing_method|title}}
+                                    </span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">Standard</span>
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <div class="mt-3 pt-3 border-top">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Results are automatically saved to your processing
+                                history.
+                            </small>
+                            <div>
+                                <a href="{% url 'web:history' %}"
+                                   class="btn btn-outline-primary btn-sm">
+                                    <i class="fas fa-history me-2"></i>View History
+                                </a>
+                                <button type="button"
+                                        class="btn btn-outline-secondary btn-sm ms-2"
+                                        data-action="clear-results">
+                                    <i class="fas fa-times me-2"></i>Clear
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- How It Works -->
+<div class="row mt-5">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-info-circle me-2"></i>
+                    How It Works
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 text-center mb-3">
+                        <div class="mb-3">
+                            <i class="fas fa-upload fa-3x text-primary"></i>
+                        </div>
+                        <h6>1. Upload</h6>
+                        <p class="text-muted small">
+                            Upload your certificate PDF or image file using the
+                            drag-and-drop
+                            area or file browser.
+                        </p>
+                    </div>
+                    <div class="col-md-3 text-center mb-3">
+                        <div class="mb-3">
+                            <i class="fas fa-cog fa-3x text-info"></i>
+                        </div>
+                        <h6>2. Process</h6>
+                        <p class="text-muted small">
+                            Our system extracts text from your PDF or image file and
+                            analyzes the
+                            content.
+                        </p>
+                    </div>
+                    <div class="col-md-3 text-center mb-3">
+                        <div class="mb-3">
+                            <i class="fas fa-robot fa-3x text-warning"></i>
+                        </div>
+                        <h6>3. Analyze</h6>
+                        <p class="text-muted small">
+                            AI analyzes the extracted text to identify subscription
+                            months information.
+                        </p>
+                    </div>
+                    <div class="col-md-3 text-center mb-3">
+                        <div class="mb-3">
+                            <i class="fas fa-check-circle fa-3x text-success"></i>
+                        </div>
+                        <h6>4. Results</h6>
+                        <p class="text-muted small">
+                            Get the extracted subscription months data instantly.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Supported Formats -->
+<div class="row mt-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-file-alt me-2"></i>
+                    Supported Formats
+                </h6>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled mb-0">
+                    <li class="mb-2">
+                        <i class="fas fa-file-pdf text-danger me-2"></i>
+                        PDF documents (Standard & AI)
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-file-image text-success me-2"></i>
+                        PNG images (AI only)
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-file-image text-success me-2"></i>
+                        JPG/JPEG images (AI only)
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-info-circle text-info me-2"></i>
+                        Max file size: 10MB
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-shield-alt me-2"></i>
+                    Security & Privacy
+                </h6>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled mb-0">
+                    <li class="mb-2">
+                        <i class="fas fa-lock text-primary me-2"></i>
+                        Files are processed securely
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-trash text-secondary me-2"></i>
+                        Temporary files are deleted
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-user-shield text-success me-2"></i>
+                        No data is stored permanently
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/pages/process.js' %}"></script>
+{% endblock %}
