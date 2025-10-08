@@ -1,0 +1,555 @@
+{% extends "base.html" %}
+{% load static %}
+{% block page_icon %}fas fa-history{% endblock %}
+{% block page_title %}Processing History{% endblock %}
+
+{% block extra_css %}
+<!-- DataTables CSS -->
+<link rel="stylesheet" href="{% static 'css/datatables/dataTables.bootstrap5.min.css' %}">
+<link rel="stylesheet" href="{% static 'css/datatables/buttons.bootstrap5.min.css' %}">
+<link rel="stylesheet" href="{% static 'css/datatables/dateTime.min.css' %}">
+
+<style>
+.status-success { color: #198754; font-weight: 500; }
+.status-error { color: #dc3545; font-weight: 500; }
+.processing-standard { color: #6c757d; }
+.processing-ai { color: #0d6efd; font-weight: 500; }
+
+/* Make badge text white */
+.badge {
+    color: white !important;
+}
+
+/* Processing time badge should have black text */
+.badge.bg-light {
+    color: black !important;
+}
+
+/* Remove gray background from DataTables buttons */
+.dt-button {
+    background: transparent !important;
+    border: 1px solid #dee2e6 !important;
+}
+
+.dt-button:hover {
+    background: #f8f9fa !important;
+}
+
+/* DataTables customization */
+.dataTables_wrapper .dataTables_filter {
+    float: right;
+    margin-bottom: 1rem;
+}
+
+.dataTables_wrapper .dataTables_length {
+    margin-bottom: 1rem;
+}
+
+.dt-buttons {
+    margin-bottom: 1rem;
+    margin-right: 1rem;
+}
+
+.dt-button {
+    margin-right: 0.25rem !important;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    {% if history %}
+                        <!-- Action Buttons -->
+                        <div class="mb-3">
+                            <div class="d-flex flex-wrap gap-2">
+                                <button id="clearFilters" class="btn btn-outline-secondary btn-sm">
+                                    <i class="fas fa-refresh me-1"></i>Clear All Filters
+                                </button>
+                                <button class="btn btn-outline-primary btn-sm" data-action="refresh">
+                                    <i class="fas fa-sync-alt me-1"></i>Refresh
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- History Table -->
+                        <div class="table-responsive">
+                            <table id="historyTable" class="table table-hover table-full-width">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Requester</th>
+                                        <th>Endpoint</th>
+                                        <th>Status</th>
+                                        <th>Processing Time</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for record in history %}
+                                    <tr>
+                                        <td data-order="{{ record.created_at|date:'Y-m-d H:i:s' }}">
+                                            {{ record.created_at|date:"M d, Y H:i" }}
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-info">{{ record.requester }}</span>
+                                        </td>
+                                        <td>
+                                            <code class="text-muted">{{ record.endpoint }}</code>
+                                        </td>
+                                        <td>
+                                            {% if record.status == 'success' %}
+                                                <span class="badge bg-success status-success">
+                                                    <i class="fas fa-check-circle me-1"></i>Success
+                                                </span>
+                                            {% else %}
+                                                <span class="badge bg-danger status-error">
+                                                    <i class="fas fa-exclamation-circle me-1"></i>Error
+                                                </span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-light text-dark">
+                                                {{ record.processing_time }}s
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                <button class="btn btn-sm btn-outline-primary" 
+                                                        data-action="view-details"
+                                                        data-record-id="{{ record.id }}"
+                                                        data-bs-toggle="tooltip" 
+                                                        title="View details">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-history fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">No Processing History</h5>
+                            <p class="text-muted">You haven't processed any certificates yet.</p>
+                            <a href="/process" class="btn btn-primary">
+                                <i class="fas fa-plus me-2"></i>Process Your First Certificate
+                            </a>
+                        </div>
+                    {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Details Modal -->
+<div class="modal fade" id="detailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-info-circle me-2"></i>Processing Details
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="modalContent">
+                    <!-- Content will be loaded here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- jQuery (required for DataTables) -->
+<script src="{% static 'js/datatables/jquery.min.js' %}"></script>
+
+<!-- DataTables JS -->
+<script src="{% static 'js/datatables/jquery.dataTables.min.js' %}"></script>
+<script src="{% static 'js/datatables/dataTables.bootstrap5.min.js' %}"></script>
+<script src="{% static 'js/datatables/dataTables.buttons.min.js' %}"></script>
+<script src="{% static 'js/datatables/buttons.bootstrap5.min.js' %}"></script>
+<script src="{% static 'js/datatables/buttons.html5.min.js' %}"></script>
+<script src="{% static 'js/datatables/buttons.print.min.js' %}"></script>
+<script src="{% static 'js/datatables/dataTables.dateTime.min.js' %}"></script>
+<script src="{% static 'js/datatables/jszip.min.js' %}"></script>
+<script src="{% static 'js/datatables/pdfmake.min.js' %}"></script>
+<script src="{% static 'js/datatables/vfs_fonts.js' %}"></script>
+
+<!-- Clipboard.js for copy functionality -->
+<script src="{% static 'js/datatables/clipboard.min.js' %}"></script>
+
+<!-- Include history JavaScript -->
+<script src="{% static 'js/pages/history.js' %}"></script>
+
+<script>
+$(document).ready(function() {
+    // Initialize DataTable
+    var table = $('#historyTable').DataTable({
+        // Basic configuration
+        pageLength: 25,
+        lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]],
+        order: [[0, 'desc']], // Sort by date descending
+        
+        // Enable responsive design
+        responsive: true,
+        
+        // Column definitions
+        columnDefs: [
+            {
+                targets: [1], // Requester column
+                type: 'string'
+            },
+            {
+                targets: [2], // Endpoint column
+                type: 'string'
+            },
+            {
+                targets: [3], // Status column  
+                type: 'string'
+            },
+            {
+                targets: [4], // Processing time column
+                type: 'num'
+            },
+            {
+                targets: [5], // Actions column
+                orderable: false,
+                searchable: false
+            }
+        ],
+        
+        // Buttons for export functionality
+        dom: 'Bfrtip',
+        buttons: [
+            {
+                extend: 'copy',
+                text: '<i class="fas fa-copy me-1"></i>Copy',
+                className: 'btn btn-sm',
+                title: 'Processing History Data',
+                exportOptions: {
+                    columns: ':not(:last-child)' // Exclude the Actions column
+                },
+                success: function() {
+                    showAlert('Table data copied to clipboard!', 'success');
+                }
+            },
+            {
+                extend: 'csv',
+                text: '<i class="fas fa-file-csv me-1"></i>CSV',
+                className: 'btn btn-sm',
+                title: 'Processing_History_' + new Date().toISOString().split('T')[0],
+                exportOptions: {
+                    columns: ':not(:last-child)' // Exclude the Actions column
+                }
+            },
+            {
+                extend: 'excel',
+                text: '<i class="fas fa-file-excel me-1"></i>Excel',
+                className: 'btn btn-sm',
+                title: 'Processing_History_' + new Date().toISOString().split('T')[0],
+                exportOptions: {
+                    columns: ':not(:last-child)' // Exclude the Actions column
+                }
+            },
+            {
+                extend: 'pdf',
+                text: '<i class="fas fa-file-pdf me-1"></i>PDF',
+                className: 'btn btn-sm',
+                title: 'Processing History',
+                orientation: 'landscape',
+                pageSize: 'A4',
+                exportOptions: {
+                    columns: ':not(:last-child)' // Exclude the Actions column
+                }
+            },
+            {
+                extend: 'print',
+                text: '<i class="fas fa-print me-1"></i>Print',
+                className: 'btn btn-sm',
+                title: 'Processing History',
+                exportOptions: {
+                    columns: ':not(:last-child)' // Exclude the Actions column
+                }
+            }
+        ],
+        
+        // Language customization
+        language: {
+            search: "Search records:",
+            lengthMenu: "Show _MENU_ records per page",
+            info: "Showing _START_ to _END_ of _TOTAL_ records",
+            infoEmpty: "No records available",
+            infoFiltered: "(filtered from _MAX_ total records)",
+            zeroRecords: "No matching records found",
+            emptyTable: "No processing history available"
+        },
+        
+        // State saving
+        stateSave: true,
+        stateDuration: 60 * 60 * 24 * 7 // Save state for 1 week
+    });
+    
+    // Clear filters button
+    $('#clearFilters').on('click', function() {
+        table.search('').columns().search('').draw();
+        showAlert('All filters cleared', 'success');
+    });
+    
+    // Add fallback copy functionality
+    if (!window.ClipboardJS) {
+        // Manual copy fallback for older browsers
+        $(document).on('click', '.buttons-copy', function(e) {
+            e.preventDefault();
+            
+            try {
+                // Get table data
+                var tableData = table.rows({ search: 'applied' }).data().toArray();
+                var copyText = [];
+                
+                // Add header
+                copyText.push(['Date', 'Requester', 'Endpoint', 'Status', 'Processing Time'].join('\t'));
+                
+                // Add data rows
+                tableData.forEach(function(row) {
+                    var rowData = [
+                        $(row[0]).text().trim(),
+                        $(row[1]).text().trim(),
+                        $(row[2]).text().trim(),
+                        $(row[3]).text().trim(),
+                        $(row[4]).text().trim()
+                    ];
+                    copyText.push(rowData.join('\t'));
+    });
+                
+                // Copy to clipboard using modern API
+                if (navigator.clipboard) {
+                    navigator.clipboard.writeText(copyText.join('\n')).then(function() {
+                        showAlert('Table data copied to clipboard!', 'success');
+                    }).catch(function() {
+                        showAlert('Copy failed. Please try again.', 'error');
+                    });
+                } else {
+                    // Fallback for older browsers
+                    var textArea = document.createElement('textarea');
+                    textArea.value = copyText.join('\n');
+                    document.body.appendChild(textArea);
+                    textArea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textArea);
+                    showAlert('Table data copied to clipboard!', 'success');
+                }
+            } catch (error) {
+                console.error('Copy error:', error);
+                showAlert('Copy failed. Please try again.', 'error');
+            }
+        });
+    }
+    
+    // Initialize tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+
+// Pass history data to JavaScript
+const historyData = {
+    {% for record in history %}
+    {{ record.id }}: {
+        'id': {{ record.id }},
+        'created_at': '{{ record.created_at|date:"M d, Y H:i:s" }}',
+        'requester': '{{ record.requester|default:"N/A" }}',
+        'processing_time': {{ record.processing_time }},
+        'status': '{{ record.status }}',
+        'endpoint': '{{ record.endpoint }}',
+        'processing_method': '{{ record.processing_method }}',
+        'subscription_months': '{{ record.subscription_months }}',
+        'subscription_years': '{{ record.subscription_years|default:"N/A" }}',
+        'error_message': '{{ record.error_message|default:""|escapejs }}',
+        'raw_result': '{{ record.raw_result|default:""|escapejs }}'
+    }{% if not forloop.last %},{% endif %}
+    {% endfor %}
+};
+
+// Override the viewDetails function to use actual data
+function viewDetails(recordId) {
+    const modalContent = document.getElementById('modalContent');
+    const record = historyData[recordId];
+    
+    if (!record) {
+    modalContent.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <strong>Error:</strong> Record not found.
+        </div>
+    `;
+    const modal = new bootstrap.Modal(document.getElementById('detailsModal'));
+    modal.show();
+        return;
+    }
+    
+    // Build the detailed view HTML
+    let detailsHtml = `
+            <div class="row">
+            <div class="col-12">
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <i class="fas fa-info-circle me-2"></i>Basic Information
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-borderless mb-0">
+                            <tbody>
+                                <tr>
+                                    <td><strong>Record ID:</strong></td>
+                                    <td>${record.id}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Date & Time:</strong></td>
+                                    <td>${record.created_at}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Requester:</strong></td>
+                                    <td><span class="badge bg-info">${record.requester}</span></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Processing Time:</strong></td>
+                                    <td>${record.processing_time} seconds</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Endpoint:</strong></td>
+                                    <td><code>${record.endpoint}</code></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Status:</strong></td>
+                                    <td>
+                                        <span class="badge ${record.status === 'success' ? 'bg-success' : 'bg-danger'}">
+                                            <i class="fas ${record.status === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'} me-1"></i>
+                                            ${record.status.charAt(0).toUpperCase() + record.status.slice(1)}
+                                        </span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                    </table>
+                </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Add raw result section if available
+    if (record.raw_result && record.raw_result.trim() !== '') {
+        detailsHtml += `
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-code me-2"></i>Raw Result Data
+                    <button class="btn btn-sm btn-outline-secondary float-end" onclick="copyRawResult(${record.id})">
+                        <i class="fas fa-copy me-1"></i>Copy
+                    </button>
+                    </div>
+                <div class="card-body">
+                    <pre class="bg-light p-3 rounded" style="max-height: 300px; overflow-y: auto;"><code id="rawResult${record.id}">${record.raw_result}</code></pre>
+                </div>
+            </div>
+        `;
+    }
+    
+    modalContent.innerHTML = detailsHtml;
+    
+    const modal = new bootstrap.Modal(document.getElementById('detailsModal'));
+    modal.show();
+}
+
+// Function to copy raw result data
+function copyRawResult(recordId) {
+    const rawResultElement = document.getElementById(`rawResult${recordId}`);
+    const textToCopy = rawResultElement.textContent;
+    
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(textToCopy).then(function() {
+            showAlert('Raw result data copied to clipboard!', 'success');
+        }).catch(function() {
+            showAlert('Copy failed. Please try again.', 'error');
+        });
+    } else {
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = textToCopy;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        showAlert('Raw result data copied to clipboard!', 'success');
+    }
+}
+
+// Download result function  
+function downloadResult(recordId) {
+    showAlert('Downloading result for record ' + recordId + '...', 'info');
+    
+    // Use Django web URL instead of API endpoint
+    const downloadUrl = `/history/download/${recordId}/`;
+    
+    fetch(downloadUrl)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Download failed');
+            }
+            return response.blob();
+        })
+        .then(blob => {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = 'processing_result_' + recordId + '.json';
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            showAlert('Download completed successfully!', 'success');
+        })
+        .catch(error => {
+            console.error('Download error:', error);
+            showAlert('Download failed. Please try again.', 'error');
+        });
+}
+
+// Alert function
+function showAlert(message, type) {
+    const alertClass = type === 'error' ? 'danger' : type;
+    const alertHtml = `
+        <div class="alert alert-${alertClass} alert-dismissible fade show" role="alert">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    
+    // Remove existing alerts
+    const existingAlerts = document.querySelectorAll('.alert');
+    existingAlerts.forEach(alert => alert.remove());
+    
+    // Add new alert at top of content
+    const content = document.querySelector('.card-body');
+    content.insertAdjacentHTML('afterbegin', alertHtml);
+    
+    // Auto-dismiss after 3 seconds
+    setTimeout(() => {
+        const alert = document.querySelector('.alert');
+        if (alert) {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        }
+    }, 3000);
+}
+</script>
+{% endblock %} 

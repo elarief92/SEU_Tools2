@@ -1,0 +1,541 @@
+{% extends 'base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "API Endpoint Requests" %}{% endblock %}
+{% block page_icon %}fas fa-code{% endblock %}
+{% block page_title %}Endpoint Requests{% endblock %}
+{% block page_description %}{% endblock %}
+{% block page_actions %}
+{% endblock %}
+ 
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">{% trans "API Endpoint Requests" %}</h5>
+                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#requestFormModal" data-mode="create">
+                            <i class="fas fa-plus me-2"></i>{% trans "New Request" %}
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if api_requests %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>{% trans "Title" %}</th>
+                                    <th>{% trans "Method" %}</th>
+                                    <th>{% trans "Priority" %}</th>
+                                    <th>{% trans "Status" %}</th>
+                                    <th>{% trans "Date Needed" %}</th>
+                                    <th>{% trans "Created" %}</th>
+                                    <th>{% trans "Actions" %}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for request in api_requests %}
+                                <tr>
+                                    <td>{{ request.title }}</td>
+                                    <td>
+                                        <span class="badge {% if request.http_method == 'GET' %}bg-success{% elif request.http_method == 'POST' %}bg-primary{% elif request.http_method == 'PUT' %}bg-warning{% elif request.http_method == 'DELETE' %}bg-danger{% else %}bg-secondary{% endif %}">
+                                            {{ request.http_method }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge {% if request.priority == 'critical' %}bg-danger{% elif request.priority == 'high' %}bg-warning{% elif request.priority == 'medium' %}bg-info{% else %}bg-secondary{% endif %}">
+                                            {{ request.priority|title }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge {% if request.status == 'completed' %}bg-success{% elif request.status == 'in_progress' %}bg-warning{% elif request.status == 'rejected' %}bg-danger{% else %}bg-secondary{% endif %}">
+                                            {{ request.get_status_display }}
+                                        </span>
+                                    </td>
+                                    <td>{{ request.date_needed }}</td>
+                                    <td>{{ request.created_at|date:"Y-m-d" }}</td>
+                                    <td>
+                                        <button type="button" class="btn btn-sm btn-info view-request" data-bs-toggle="modal" data-bs-target="#requestDetailModal" data-request-id="{{ request.pk }}">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        {% if request.user == request.user or user.is_staff %}
+                                        <button type="button" class="btn btn-sm btn-warning edit-request" data-bs-toggle="modal" data-bs-target="#requestFormModal" data-mode="edit" data-request-id="{{ request.pk }}">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                        <p class="lead text-muted">{% trans "No API endpoint requests yet." %}</p>
+                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#requestFormModal" data-mode="create">
+                            <i class="fas fa-plus me-2"></i>{% trans "Create First Request" %}
+                        </button>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Request Form Modal -->
+<div class="modal fade" id="requestFormModal" tabindex="-1" aria-labelledby="requestFormModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="requestFormModalLabel">{% trans "New API Request" %}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="apiRequestForm" class="needs-validation" novalidate>
+                    {% csrf_token %}
+                    <input type="hidden" id="requestId" name="request_id" value="">
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="title" class="form-label">{% trans "Title" %} *</label>
+                            <input type="text" class="form-control" id="title" name="title" required>
+                            <div class="invalid-feedback">
+                                {% trans "Please provide a title." %}
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="http_method" class="form-label">{% trans "HTTP Method" %} *</label>
+                            <select class="form-select" id="http_method" name="http_method" required>
+                                <option value="GET">GET</option>
+                                <option value="POST" selected>POST</option>
+                                <option value="PUT">PUT</option>
+                                <option value="PATCH">PATCH</option>
+                                <option value="DELETE">DELETE</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="priority" class="form-label">{% trans "Priority" %} *</label>
+                            <select class="form-select" id="priority" name="priority" required>
+                                <option value="low">{% trans "Low" %}</option>
+                                <option value="medium" selected>{% trans "Medium" %}</option>
+                                <option value="high">{% trans "High" %}</option>
+                                <option value="critical">{% trans "Critical" %}</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="description" class="form-label">{% trans "Description" %} *</label>
+                        <textarea class="form-control" id="description" name="description" rows="3" required></textarea>
+                        <div class="invalid-feedback">
+                            {% trans "Please provide a description." %}
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="endpoint_path" class="form-label">{% trans "Suggested Endpoint Path" %}</label>
+                        <input type="text" class="form-control" id="endpoint_path" name="endpoint_path"
+                               placeholder="/api/v1/feature-name/">
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="expected_input" class="form-label">{% trans "Expected Input" %} *</label>
+                            <textarea class="form-control" id="expected_input" name="expected_input" rows="4"
+                                      placeholder="{% trans 'Describe the input parameters and data format' %}" required></textarea>
+                            <div class="invalid-feedback">
+                                {% trans "Please describe the expected input." %}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="expected_output" class="form-label">{% trans "Expected Output" %} *</label>
+                            <textarea class="form-control" id="expected_output" name="expected_output" rows="4"
+                                      placeholder="{% trans 'Describe the expected response format' %}" required></textarea>
+                            <div class="invalid-feedback">
+                                {% trans "Please describe the expected output." %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="business_justification" class="form-label">{% trans "Business Justification" %}</label>
+                        <textarea class="form-control" id="business_justification" name="business_justification" rows="3"></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="use_case" class="form-label">{% trans "Use Case" %}</label>
+                        <textarea class="form-control" id="use_case" name="use_case" rows="3"></textarea>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="date_needed" class="form-label">{% trans "Date Needed" %} *</label>
+                            <input type="date" class="form-control" id="date_needed" name="date_needed" required>
+                            <div class="invalid-feedback">
+                                {% trans "Please specify when you need this endpoint." %}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="requester" class="form-label">{% trans "Requester" %}</label>
+                            <input type="text" class="form-control" id="requester" name="requester"
+                                   value="{{ user.username }}" readonly
+                                   placeholder="{% trans 'Your name or team name' %}">
+                        </div>
+                    </div>
+
+                    {% if user.is_staff %}
+                    <hr>
+                    <h6 class="mb-3">{% trans "Admin Section" %}</h6>
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label for="status" class="form-label">{% trans "Status" %}</label>
+                            <select class="form-select" id="status" name="status">
+                                <option value="pending" selected>{% trans "Pending Review" %}</option>
+                                <option value="in_progress">{% trans "In Progress" %}</option>
+                                <option value="completed">{% trans "Completed" %}</option>
+                                <option value="rejected">{% trans "Rejected" %}</option>
+                            </select>
+                        </div>
+                        <div class="col-md-8">
+                            <label for="developed_endpoint_url" class="form-label">{% trans "Developed Endpoint URL" %}</label>
+                            <input type="url" class="form-control" id="developed_endpoint_url" name="developed_endpoint_url"
+                                   placeholder="https://api.example.com/v1/feature">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="admin_notes" class="form-label">{% trans "Admin Notes" %}</label>
+                        <textarea class="form-control" id="admin_notes" name="admin_notes" rows="3"></textarea>
+                    </div>
+                    {% endif %}
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{% trans "Close" %}</button>
+                <button type="button" class="btn btn-primary" id="saveRequest">{% trans "Save" %}</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Request Detail Modal -->
+<div class="modal fade" id="requestDetailModal" tabindex="-1" aria-labelledby="requestDetailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="requestDetailModalLabel">{% trans "API Request Details" %}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="requestDetailContent">
+                    <!-- Content will be loaded dynamically -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{% trans "Close" %}</button>
+                <button type="button" class="btn btn-warning" id="editRequestBtn" style="display: none;">
+                    <i class="fas fa-edit me-2"></i>{% trans "Edit" %}
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // CSRF token setup for AJAX calls
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        const csrftoken = getCookie('csrftoken');
+
+        // Setup AJAX to include CSRF token
+        $.ajaxSetup({
+            beforeSend: function(xhr, settings) {
+                if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type) && !this.crossDomain) {
+                    xhr.setRequestHeader("X-CSRFToken", csrftoken);
+                }
+                xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest");
+            }
+        });
+
+        // Initialize DataTable
+        const table = $('table').DataTable({
+            order: [[5, 'desc']],  // Sort by created date by default
+            pageLength: 25,
+            buttons: [
+                'copy', 'csv', 'excel', 'pdf', 'print'
+            ]
+        });
+
+        // Form validation
+        const forms = document.querySelectorAll('.needs-validation');
+        Array.prototype.slice.call(forms).forEach(function(form) {
+            form.addEventListener('submit', function(event) {
+                if (!form.checkValidity()) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                form.classList.add('was-validated');
+            }, false);
+        });
+
+        // Handle form modal events
+        $('#requestFormModal').on('show.bs.modal', function(event) {
+            const button = $(event.relatedTarget);
+            const mode = button.data('mode');
+            const requestId = button.data('request-id');
+            const modal = $(this);
+            
+            // Reset form
+            modal.find('form')[0].reset();
+            modal.find('form').removeClass('was-validated');
+            
+            if (mode === 'edit' && requestId) {
+                // Set the hidden request ID field
+                modal.find('#requestId').val(requestId);
+                
+                // Load request data for editing
+                $.get(`/api-requests/${requestId}/json/`, function(data) {
+                    modal.find('#title').val(data.title);
+                    modal.find('#http_method').val(data.http_method);
+                    modal.find('#priority').val(data.priority);
+                    modal.find('#description').val(data.description);
+                    modal.find('#endpoint_path').val(data.endpoint_path);
+                    modal.find('#expected_input').val(data.expected_input);
+                    modal.find('#expected_output').val(data.expected_output);
+                    modal.find('#business_justification').val(data.business_justification);
+                    modal.find('#use_case').val(data.use_case);
+                    modal.find('#date_needed').val(data.date_needed);
+                    modal.find('#requester').val(data.requester);
+                    
+                    if (data.is_staff) {
+                        modal.find('#status').val(data.status);
+                        modal.find('#developed_endpoint_url').val(data.developed_endpoint_url);
+                        modal.find('#admin_notes').val(data.admin_notes);
+                    }
+                });
+                
+                modal.find('.modal-title').text('{% trans "Edit API Request" %}');
+                modal.find('form').attr('data-request-id', requestId);
+            } else {
+                // Clear the hidden request ID field for new requests
+                modal.find('#requestId').val('');
+                modal.find('.modal-title').text('{% trans "New API Request" %}');
+                modal.find('form').removeAttr('data-request-id');
+            }
+        });
+
+        // Handle save button click
+        $('#saveRequest').click(function() {
+            const form = $('#apiRequestForm');
+            const requestId = form.find('#requestId').val();
+            const url = requestId ? `/api-requests/${requestId}/update/` : '/api-requests/create/';
+            
+            if (!form[0].checkValidity()) {
+                form.addClass('was-validated');
+                return;
+            }
+            
+            // Prepare form data with CSRF token
+            const formData = new FormData(form[0]);
+            
+            $.ajax({
+                url: url,
+                method: 'POST',  // Use POST for both create and update
+                data: formData,
+                processData: false,
+                contentType: false,
+                headers: {
+                    'X-CSRFToken': csrftoken,
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                success: function(response) {
+                    $('#requestFormModal').modal('hide');
+                    // Reload the page to show updated data
+                    window.location.reload();
+                },
+                error: function(xhr) {
+                    console.error('Error details:', xhr.responseText);
+                    alert('Error saving request: ' + (xhr.responseJSON?.message || xhr.responseText));
+                }
+            });
+        });
+
+        // Handle view request click
+        $('.view-request').click(function() {
+            const requestId = $(this).data('request-id');
+            const modal = $('#requestDetailModal');
+            
+            $.get(`/api-requests/${requestId}/json/`, function(data) {
+                let content = `
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h6 class="text-muted mb-3">{% trans "Basic Information" %}</h6>
+                            <table class="table table-sm">
+                                <tr>
+                                    <th style="width: 150px;">{% trans "Title" %}</th>
+                                    <td>${data.title}</td>
+                                </tr>
+                                <tr>
+                                    <th>{% trans "Status" %}</th>
+                                    <td><span class="badge ${data.status_class}">${data.status_display}</span></td>
+                                </tr>
+                                <tr>
+                                    <th>{% trans "HTTP Method" %}</th>
+                                    <td><span class="badge ${data.method_class}">${data.http_method}</span></td>
+                                </tr>
+                                <tr>
+                                    <th>{% trans "Priority" %}</th>
+                                    <td><span class="badge ${data.priority_class}">${data.priority}</span></td>
+                                </tr>
+                                <tr>
+                                    <th>{% trans "Date Needed" %}</th>
+                                    <td>${data.date_needed}</td>
+                                </tr>
+                                <tr>
+                                    <th>{% trans "Requester" %}</th>
+                                    <td>${data.requester || data.user?.username || 'N/A'}</td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-muted mb-3">{% trans "Technical Details" %}</h6>
+                            <table class="table table-sm">
+                                <tr>
+                                    <th style="width: 150px;">{% trans "Endpoint Path" %}</th>
+                                    <td><code>${data.endpoint_path || "{% trans 'Not specified' %}"}</code></td>
+                                </tr>
+                                ${data.developed_endpoint_url ? `
+                                <tr>
+                                    <th>{% trans "Developed URL" %}</th>
+                                    <td>
+                                        <a href="${data.developed_endpoint_url}" target="_blank">
+                                            ${data.developed_endpoint_url}
+                                            <i class="fas fa-external-link-alt ms-1"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                ` : ''}
+                                <tr>
+                                    <th>{% trans "Created" %}</th>
+                                    <td>${data.created_at}</td>
+                                </tr>
+                                <tr>
+                                    <th>{% trans "Last Updated" %}</th>
+                                    <td>${data.updated_at}</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h6 class="text-muted mb-3">{% trans "Description" %}</h6>
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    ${data.description.replace(/\n/g, '<br>')}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h6 class="text-muted mb-3">{% trans "Expected Input" %}</h6>
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    ${(data.expected_input || "{% trans 'Not specified' %}").replace(/\n/g, '<br>')}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-muted mb-3">{% trans "Expected Output" %}</h6>
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    ${(data.expected_output || "{% trans 'Not specified' %}").replace(/\n/g, '<br>')}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h6 class="text-muted mb-3">{% trans "Business Justification" %}</h6>
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    ${data.business_justification.replace(/\n/g, '<br>')}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-muted mb-3">{% trans "Use Case" %}</h6>
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    ${data.use_case.replace(/\n/g, '<br>')}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    ${data.is_staff ? `
+                    <div class="row">
+                        <div class="col-12">
+                            <h6 class="text-muted mb-3">{% trans "Admin Notes" %}</h6>
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    ${(data.admin_notes || "{% trans 'No admin notes' %}").replace(/\n/g, '<br>')}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    ` : ''}
+                `;
+                
+                modal.find('#requestDetailContent').html(content);
+                
+                // Show/hide edit button based on permissions
+                if (data.can_edit) {
+                    $('#editRequestBtn').show().data('request-id', requestId);
+                } else {
+                    $('#editRequestBtn').hide();
+                }
+            });
+        });
+
+        // Handle edit button click in detail modal
+        $('#editRequestBtn').click(function() {
+            const requestId = $(this).data('request-id');
+            $('#requestDetailModal').modal('hide');
+            
+            // Trigger the form modal with edit mode
+            setTimeout(function() {
+                const editButton = $('<button>').data({
+                    mode: 'edit',
+                    'request-id': requestId
+                });
+                $('#requestFormModal').modal('show');
+                $('#requestFormModal').trigger('show.bs.modal', { relatedTarget: editButton[0] });
+            }, 300);
+        });
+    });
+</script>
+{% endblock %} 

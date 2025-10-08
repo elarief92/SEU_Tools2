@@ -1,0 +1,255 @@
+# SEU Tools Django Project - AI Assistant Rules
+
+## Project Overview
+- **Name**: SEU Tools - General API Platform
+- **Framework**: Django 4.2.7
+- **Frontend**: Bootstrap 5, HTML Templates
+- **Database**: SQLite (development)
+- **Architecture**: Model-View-Template (MVT)
+- **Recently migrated from**: FastAPI to Django
+
+## Platform Architecture
+
+### General-Purpose API Gateway
+SEU Tools is designed as a **general-purpose API platform** that provides standardized access points to different backend systems and services:
+
+- **Multiple Backend Systems**: Integrates with various external systems and services
+- **Unified Access Layer**: Acts as a central API gateway with consistent authentication and monitoring
+- **Extensible Design**: Easy to add new endpoints for different systems without changing core infrastructure
+- **Varying Response Formats**: Each system has its own data structure and response format
+- **Centralized Management**: All systems share the same user management, token authentication, and logging
+
+### Current Implementation
+- **Certificate Processing System**: Currently the only implemented endpoint (`/api/extract-GOSI_subscription/`, `/api/AI_extract-GOSI_subscription/`)
+- **Processing History**: Tracks usage across ALL endpoints with requester information
+- **Token Management**: Unified authentication for all future endpoints
+
+### Future Expansion
+- **New Endpoints**: Will be added for different backend systems
+- **Different Data Types**: Each endpoint will handle different types of requests and responses
+- **Consistent Interface**: All endpoints will follow the same authentication, logging, and monitoring patterns
+- **Scalable Architecture**: Platform designed to handle multiple concurrent systems
+
+### Key Benefits
+- **Centralized Authentication**: All systems use the same token/user management
+- **Unified Logging**: ProcessingHistory model tracks usage across all systems
+- **Consistent Monitoring**: Dashboard and history work for all endpoints regardless of backend system
+- **Standardized API**: External consumers get consistent API experience across all systems
+
+## Core Architecture Principles
+
+### 1. Model-First Development
+- **ALWAYS start with the model** when implementing new features
+- Business logic belongs in models, not views
+- Use Django ORM for all database operations
+- Create proper model methods for complex queries
+
+### 2. Implementation Flow Priority
+**For Web App Features:**
+1. **Model** (data structure, business logic)
+2. **View** (request handling, context preparation)  
+3. **Template** (presentation layer)
+
+**For API Features:**
+1. **Model** (data structure, business logic)
+2. **View** (serialization, API logic)
+
+### 3. No Internal API Endpoints
+- **Critical Rule**: Web app features should use template context, NOT API endpoints
+- API endpoints are ONLY for external consumers, third-party integrations, and mobile apps
+- If the web app needs data, pass it through Django template context
+- Avoid AJAX calls to internal APIs for web app functionality
+
+## Django Best Practices
+
+### Views
+- Use class-based views for consistency
+- Inherit from appropriate mixins (LoginRequiredMixin, etc.)
+- Keep views focused and single-purpose
+- Pass data via context, not internal API calls
+
+### Models
+- Use timezone-aware datetime: `timezone.now()`
+- Add helpful model methods and properties
+- Use proper field types and constraints
+- Create meaningful `__str__` methods
+
+### Templates
+- Use Bootstrap 5 components consistently
+- Follow responsive design principles
+- Use Django template inheritance
+- Implement proper CSRF protection
+
+### Internationalization (i18n)
+- **Always make projects multilingual ready** with Arabic and English support
+- Use Django's built-in internationalization framework (`django.utils.translation`)
+- Implement proper RTL (Right-to-Left) support for Arabic
+- Use `{% load i18n %}` and `{% trans %}` tags in templates
+- Create proper translation files (.po files) for both languages
+- Handle text direction with CSS (`dir="rtl"` for Arabic, `dir="ltr"` for English)
+- Use `{% get_current_language %}` for language-specific styling
+- Implement language switcher in base template
+- Store user language preferences in session/database
+
+### Security
+- Always use CSRF protection on forms
+- Validate all user inputs
+- Use Django's built-in authentication system
+- Never expose sensitive data (API tokens, passwords) in templates
+- Use LoginRequiredMixin for protected views
+
+### Logging
+- **Always implement logging for important events**
+- Use Django's built-in logging framework
+- Log user actions, errors, and system events
+- Use appropriate log levels (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+- Log authentication attempts, data processing, and API calls
+- Store logs in appropriate files for production environments
+- Never log sensitive data (passwords, API keys, personal information)
+
+## Project Structure
+
+```
+SEU_Tools/
+├── apis/                 # External API endpoints only
+├── web/                  # Web application (views, templates)
+├── authentication/       # User authentication logic
+├── templates/           # HTML templates with Bootstrap 5
+├── static/              # CSS, JS, images
+├── seu_tools/           # Django project settings
+└── docs/                # Documentation
+```
+
+### App-Specific Rules
+
+**`apis/` App:**
+- Only for external API consumers
+- Use DRF serializers and viewsets
+- Implement proper API authentication
+- Document all endpoints
+
+**`web/` App:**
+- All web interface functionality
+- Use Django templates with Bootstrap 5
+- Pass data through template context
+- Implement proper form handling
+
+**`authentication/` App:**
+- User management and authentication
+- Token-based API authentication
+- Session-based web authentication
+
+## Code Style Standards
+
+### Python/Django
+- Follow PEP 8 formatting
+- Use descriptive variable names
+- Add docstrings to all classes and methods
+- Use type hints where appropriate
+- Keep lines under 88 characters (Black standard)
+
+### HTML/Templates
+- Use Bootstrap 5 classes consistently
+- Follow responsive design principles
+- Use semantic HTML elements
+- Implement proper accessibility attributes
+- **NO inline CSS styles** - all styles must be in `static/css/style.css`
+- **NO inline JavaScript** - all JavaScript must be in `static/js/` folder
+- Keep HTML templates clean and focused on structure/content only
+- Use proper separation of concerns (HTML for structure, CSS for styling, JS for behavior)
+
+### JavaScript
+- Use modern ES6+ syntax
+- Implement proper error handling
+- Use meaningful variable names
+- Add comments for complex logic
+- **All JavaScript must be in separate files** in `static/js/` folder
+- NO inline JavaScript in HTML templates
+- Use proper module organization for complex functionality
+- Include JavaScript files using Django's static files system
+
+### Code Organization & Separation of Concerns
+- **HTML Templates**: Structure and content only, no styling or JavaScript
+- **CSS Files**: All styling in `static/css/style.css`, no inline styles
+- **JavaScript Files**: All behavior in `static/js/` folder, no inline scripts
+- **Static Files**: Organize by type (css/, js/, images/, fonts/)
+- **External Libraries**: Download to appropriate static subdirectories
+- **Template Logic**: Keep Python logic in views, not templates
+
+### External Libraries
+- **Charts**: Always use ECharts for all chart implementations
+- **Library Management**: Download external libraries to `static/` folder instead of using CDNs
+- **Versioning**: Pin specific versions of libraries for consistency
+- **Organization**: Store libraries in appropriate subdirectories (e.g., `static/js/echarts/`, `static/css/bootstrap/`)
+
+## Database Guidelines
+- Always create migrations for model changes
+- Use descriptive migration names
+- Test migrations in development first
+- Use Django's built-in admin for debugging
+
+## Testing Standards
+- Write tests for all new functionality
+- Use Django's TestCase classes
+- Test both success and error paths
+- Mock external dependencies
+
+## Common Patterns
+
+### Token Statistics (Example)
+```python
+# ✅ GOOD: Calculate in view, pass via context
+def get_context_data(self, **kwargs):
+    context = super().get_context_data(**kwargs)
+    user_tokens = self.request.user.tokens.all()
+    context['active_tokens'] = user_tokens.filter(
+        is_active=True, 
+        expires_at__gt=timezone.now()
+    ).count()
+    return context
+
+# ❌ BAD: Create API endpoint for internal web app use
+class TokenStatsAPIView(APIView):  # Don't do this for web app
+    pass
+```
+
+### Error Handling
+- Use Django's built-in error pages
+- Implement proper logging
+- Show user-friendly error messages
+- Log detailed errors for debugging
+
+## Migration History
+- Recently migrated from FastAPI to Django
+- Maintain API compatibility where possible
+- Use Django's authentication system
+- Preserve existing data structures
+
+## Development Workflow
+1. **Plan**: Understand requirements thoroughly
+2. **Model**: Design data structures first
+3. **View**: Implement business logic
+4. **Template**: Create user interface
+5. **Test**: Verify functionality
+6. **Deploy**: Follow deployment guidelines
+
+## Performance Considerations
+- Use select_related() and prefetch_related() for optimized queries
+- Implement pagination for large datasets
+- Use Django's caching framework when appropriate
+- Optimize template rendering
+
+## Documentation Requirements
+- Document all new features
+- Update API documentation for external endpoints
+- Maintain deployment documentation
+- Comment complex business logic
+
+## Specific Project Context
+- **Certificate Processing**: Main functionality for extracting data from certificates
+- **User Management**: Role-based access control
+- **API Token System**: For external integrations
+- **Processing History**: Track all certificate processing activities
+- **Admin Interface**: For system administration
+
+Remember: When in doubt, follow Django's "batteries included" philosophy and use built-in solutions before creating custom ones. 

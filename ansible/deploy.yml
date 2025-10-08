@@ -1,0 +1,138 @@
+- name: Deploy SEU Tools (Multi-Env)
+  hosts: "{{ deploy_env }}"  # Directly use the branch name passed from pipeline
+  become: yes
+  gather_facts: yes
+
+  # Just add this validation task at the start
+  pre_tasks:
+    - name: Validate deploy_env matches inventory group
+      fail:
+        msg: "ERROR: '{{ deploy_env }}' doesn't match any inventory group. Check branch name matches inventory.ini groups."
+      when: deploy_env not in groups
+      run_once: true
+
+  tasks:
+    # STAGE 1: Install Python and Dependencies
+    - name: Install Ubuntu packages
+      apt:
+        name:
+          - "{{ python_version }}"
+          - "{{ python_version }}-venv"
+          - python3-pip
+          - git
+          - nginx
+          - tesseract-ocr
+        state: present
+      when: ansible_os_family == 'Debian'
+
+    - name: Install CentOS packages
+      yum:
+        name:
+          - "{{ python_version }}"
+          - python3-pip
+          - git
+          - nginx
+          - tesseract
+        state: present
+      when: ansible_os_family == 'RedHat'
+
+    - name: Create isolated service user
+      user:
+        name: "{{ ansible_user }}"
+        system: yes
+        shell: /bin/false
+        groups: sudo
+        append: yes  # Adds to sudo without removing other groups
+        create_home: no
+
+    - name: Create app directory
+      file:
+        path: "{{ app_dir }}"
+        state: directory
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0755'
+      
+    - name: Clone repository via SSH
+      git:
+        repo: "{{repo_url}}"
+        dest: "{{ app_dir }}"
+        version: "{{ deploy_env }}"
+        force: yes
+      become: yes
+      become_user: "{{ ansible_user }}"
+
+    - name: Create Python virtualenv
+      command: "{{ python_version }} -m venv {{ app_dir }}/venv"
+      become: yes
+      become_user: "{{ ansible_user }}"
+
+    - name: Install requirements
+      pip:
+        requirements: "{{ app_dir }}/requirements.txt"
+        virtualenv: "{{ app_dir }}/venv"
+      become: yes
+      become_user: "{{ ansible_user }}"
+
+    - name: Install Gunicorn
+      pip:
+        name: gunicorn
+        virtualenv: "{{ app_dir }}/venv"
+      become: yes
+      become_user: "{{ ansible_user }}"
+
+    - name: Generate .env file securely
+      template:
+        src: "templates/env.j2"
+        dest: "{{ app_dir }}/.env"
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0640'  # -rw-r-----
+      vars:
+        secrets: "{{ secrets | default({}) }}"
+
+    - name: Create systemd service
+      template:
+        src: templates/seu-tools.service.j2
+        dest: "/etc/systemd/system/seu-tools-{{ deploy_env }}.service"
+        owner: root
+        group: root
+        mode: '0644'
+      notify: Restart service
+
+    - name: Enable and start service
+      systemd:
+        name: "seu-tools-{{ deploy_env }}"
+        state: started
+        enabled: yes
+        daemon_reload: yes
+
+    - name: Create Nginx config
+      template:
+        src: templates/nginx.conf.j2
+        dest: "/etc/nginx/sites-available/seu-tools-{{ deploy_env }}"
+        owner: root
+        group: root
+        mode: '0644'
+      notify:
+        - Enable Nginx site
+        - Restart Nginx
+
+  handlers:
+    - name: Restart service
+      systemd:
+        name: "seu-tools-{{ deploy_env }}"
+        state: restarted
+        enabled: yes
+
+    - name: Enable Nginx site
+      file:
+        src: "/etc/nginx/sites-available/seu-tools-{{ deploy_env }}"
+        dest: "/etc/nginx/sites-enabled/seu-tools-{{ deploy_env }}"
+        state: link
+      notify: Restart Nginx
+
+    - name: Restart Nginx
+      service:
+        name: nginx
+        state: reloaded

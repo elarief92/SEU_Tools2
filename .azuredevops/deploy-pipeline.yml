@@ -1,0 +1,98 @@
+pool: 'OCR Prod'
+
+variables:
+- group: prod  
+
+
+stages:
+  # - stage: Manual_Approval
+  #   displayName: 'Select Branch'
+  #   jobs:
+  #     - job: Wait_For_Approval
+  #       displayName: 'Select Deployment Branch'
+  #       pool: server
+  #       timeoutInMinutes: 4320  # 3 days
+  #       steps:
+  #         - task: ManualValidation@0
+  #           timeoutInMinutes: 1440
+  #           inputs:
+  #             notifyUsers: |
+  #               m.shaaban@seu.edu.sa
+  #             instructions: 'Select the environment to deploy'
+  #             onTimeout: 'reject'
+
+  - stage: Validate_Branch
+    displayName: 'Validate Branch'
+    jobs:
+      - job: Validate_Branch
+        steps:
+          - script: |
+              echo "Validating branch..."
+              echo "Build Source Branch: $(Build.SourceBranchName)"
+              if [[ "$(Build.SourceBranchName)" != "Pipeline_Dev" && "$(Build.SourceBranchName)" != "Pipeline_Test" ]]; then
+                echo "##vso[task.logissue type=error]Branch $(Build.SourceBranchName) is not configured for deployment"
+                exit 1
+              fi
+            displayName: 'Validate Branch Name'
+
+
+  - stage: Check_Ansible_Installation
+    jobs:
+      - job: Setup_Environment
+        steps:
+          - checkout: self
+            clean: true
+            fetchDepth: 1
+            displayName: 'Checkout code'
+            
+          - script: sudo apt-get update -y
+            displayName: 'Update Package Lists'
+            
+          - script: |
+              if ! command -v ansible >/dev/null 2>&1; then
+                echo "Installing Ansible..."
+                if ! sudo apt-get install -y ansible; then
+                  echo "##vso[task.logissue type=error]Failed to install Ansible"
+                  exit 1
+                fi
+              fi
+              ansible --version
+            displayName: 'Install/Verify Ansible'
+            continueOnError: false
+
+  - stage: Run_Deployment
+    dependsOn: Check_Ansible_Installation
+    jobs:
+      - job: Execute_Ansible
+        steps:
+          - script: |
+              echo "Running Ansible deployment for $(Build.SourceBranchName)"
+              echo "Current directory: $(pwd)"
+              ls -la # Debug: List files in main directory
+              cd ansible
+              echo "Current directory: $(pwd)"
+              ls -la  
+              
+              ansible-playbook -i inventory.ini deploy.yml \
+                --limit $(Build.SourceBranchName) \
+                -e "{'secrets': {'SECRET_KEY':'$(SECRET_KEY)','ADMIN_USERNAME':'$(ADMIN_USERNAME)','ADMIN_PASSWORD':'$(ADMIN_PASSWORD)'}}" \
+                -e "deploy_env=$(Build.SourceBranchName)"
+            displayName: 'Run Ansible Deployment'
+            env:
+              SECRET_KEY: $(SECRET_KEY)  # These variables come from the 'prod' group
+              ADMIN_USER: $(ADMIN_USERNAME)
+              ADMIN_PASS: $(ADMIN_PASSWORD)
+
+  # - stage: Verify_Deployment
+  #   dependsOn: Run_Deployment
+  #   jobs:
+  #     - job: Smoke_Test
+  #       steps:
+  #         - script: |
+  #             curl -I http://localhost:$(
+  #               case "${{ parameters.environment }}" in
+  #                 "Pipeline_Dev") echo "8080" ;;
+  #                 "Pipeline_Test") echo "8081" ;;
+  #               esac
+  #             )
+  #           displayName: 'Verify Nginx Response'

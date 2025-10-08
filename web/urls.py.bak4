@@ -1,0 +1,43 @@
+"""
+URL configuration for web app.
+"""
+from django.urls import path
+from . import views
+
+app_name = 'web'
+
+urlpatterns = [
+    # Main pages
+    path('', views.DashboardView.as_view(), name='dashboard'),
+    path('login/', views.LoginPageView.as_view(), name='login'),
+    path('logout/', views.LogoutPageView.as_view(), name='logout'),
+    
+    # Certificate processing
+    path('process/', views.ProcessView.as_view(), name='process'),
+    path('process/upload/', views.ProcessUploadView.as_view(), name='process_upload'),
+    path('process/result/<int:pk>/', views.ProcessResultView.as_view(), name='process_result'),
+    
+    # Token management
+    path('tokens/', views.TokensView.as_view(), name='tokens'),
+    path('tokens/create/', views.TokenCreateView.as_view(), name='token_create'),
+    path('tokens/revoke/<int:pk>/', views.TokenRevokeView.as_view(), name='token_revoke'),
+    
+    # Processing history
+    path('history/', views.HistoryView.as_view(), name='history'),
+    path('history/<int:pk>/', views.HistoryDetailView.as_view(), name='history_detail'),
+    path('history/<int:pk>/download/', views.HistoryDownloadView.as_view(), name='history_download'),
+    path('history/export/', views.HistoryExportView.as_view(), name='history_export'),
+    
+    # Admin interface
+    path('admin-panel/', views.AdminPanelView.as_view(), name='admin_panel'),
+    path('admin-panel/users/', views.AdminUsersView.as_view(), name='admin_users'),
+    path('admin-panel/users/create/', views.AdminUserCreateView.as_view(), name='admin_user_create'),
+    path('admin-panel/users/<int:pk>/edit/', views.AdminUserEditView.as_view(), name='admin_user_edit'),
+    path('admin-panel/users/<int:pk>/delete/', views.AdminUserDeleteView.as_view(), name='admin_user_delete'),
+    path('admin-panel/tokens/', views.AdminTokensView.as_view(), name='admin_tokens'),
+    path('admin-panel/system/', views.AdminSystemView.as_view(), name='admin_system'),
+    
+    # Profile management
+    path('profile/', views.ProfileView.as_view(), name='profile'),
+    path('profile/edit/', views.ProfileEditView.as_view(), name='profile_edit'),
+] 

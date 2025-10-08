@@ -1,0 +1,26 @@
+# Django template files
+templates/**/*.html
+*/templates/**/*.html
+
+# Static files
+static/**
+staticfiles/**
+
+# Migration files
+*/migrations/*.py
+
+# Database files
+*.db
+*.sqlite3
+
+# Logs
+logs/**
+*.log
+
+# Environment files
+.env
+.env.local
+
+# Virtual environment
+venv/
+env/ 
