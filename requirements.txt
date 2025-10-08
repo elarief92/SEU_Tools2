@@ -1,0 +1,25 @@
+# FastAPI and dependencies
+fastapi==0.109.2
+uvicorn==0.27.1
+python-multipart==0.0.9
+
+# PDF Processing (for the original endpoint)
+pdfplumber==0.11.7
+
+# PDF to Image conversion
+pdf2image==1.17.0
+Pillow==10.2.0
+
+# File type detection
+python-magic==0.4.27
+
+# Authentication and Security
+python-jose[cryptography]==3.5.0
+passlib[bcrypt]==1.7.4
+bcrypt==4.3.0
+
+# Environment and Configuration
+python-dotenv==1.0.1
+
+# Azure OpenAI
+openai==1.12.0 
